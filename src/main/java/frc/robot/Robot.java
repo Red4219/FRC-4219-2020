@@ -17,7 +17,16 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
-import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import com.revrobotics.CANEncoder;
+
+import com.ctre.phoenix.motorcontrol.can.VictorSPX;
+
+
+import edu.wpi.first.wpilibj.Counter;
+
+import io.github.pseudoresonance.pixy2api.Pixy2;
+import io.github.pseudoresonance.pixy2api.links.Link;
+import io.github.pseudoresonance.pixy2api.links.SPILink;
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the TimedRobot
@@ -43,8 +52,22 @@ public class Robot extends TimedRobot {
   private CANSparkMax m_rightFMotor;
   private CANSparkMax m_rightBMotor;
 
+  
   private SpeedControllerGroup lMotorGroup; 
   private SpeedControllerGroup rMotorGroup; 
+  
+  private CANEncoder m_Lencoder;
+  private CANEncoder m_Rencoder;
+
+  private Counter ShooterMag;
+  private Counter ShooterIndex;
+  private Counter HoodMag;
+  private Counter TrenchMag;
+
+  private Pixy2 pixy;
+
+  private boolean FireMode;
+
 
   /**
    * This function is run when the robot is first started up and should be
@@ -70,8 +93,23 @@ public class Robot extends TimedRobot {
     rMotorGroup = new SpeedControllerGroup(m_rightFMotor,m_rightBMotor);
     m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
 
+    ShooterMag = new Counter(0); 
+		ShooterIndex = new Counter(1);
+    HoodMag = new Counter(2); 
+    TrenchMag = new Counter(3);
+    //Set Semi-Period Mode in order to Measure the Pulse Width
+    ShooterMag.setSemiPeriodMode(true);
+    HoodMag.setSemiPeriodMode(true);
+    TrenchMag.setSemiPeriodMode(true);
+
     dCon = new XboxController(1);
     oCon = new XboxController(2);
+    Pixy2 pixy = Pixy2.createInstance(new SPILink());
+    pixy.init(); // Initializes the camera and prepares to send/receive data
+		pixy.setLamp((byte) 1, (byte) 1); // Turns the LEDs on
+    pixy.setLED(0, 255, 0); // Sets the RGB LED to green
+    
+    FireMode = false;
   }
 
   /**
@@ -84,6 +122,19 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
+    SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
+    SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
+    SmartDashboard.putNumber("Shooter Rot", ShooterIndex.get());
+    SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
+    SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
+    SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
+    // The 9.73e-4 is the total period of the PWM output on the am-3749
+		// The value will then be divided by the period to get duty cycle.
+		// This is converted to degrees and Radians
+		//double angleDEG = (value/9.739499999999999E-4)*361 -1;
+		//double angleRAD = (value/9.739499999999999E-4)*2*(Math.PI) ;
+		//SmartDashboard.putNumber("Angle in Degrees", angleDEG);
+		//SmartDashboard.putNumber("Angle in Radians", angleRAD);
   }
 
   /**
