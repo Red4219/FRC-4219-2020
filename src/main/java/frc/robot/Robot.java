@@ -51,6 +51,8 @@ public class Robot extends TimedRobot {
   private CANSparkMax m_leftBMotor;
   private CANSparkMax m_rightFMotor;
   private CANSparkMax m_rightBMotor;
+
+  private VictorSPX IntakeMotor;
   
   private Solenoid IntakeSol;
   
@@ -95,6 +97,8 @@ public class Robot extends TimedRobot {
     lMotorGroup = new SpeedControllerGroup(m_leftFMotor,m_leftBMotor);
     rMotorGroup = new SpeedControllerGroup(m_rightFMotor,m_rightBMotor);
     m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
+
+    IntakeMotor = new VictorSPX(0);
 
     ShooterMag = new Counter(0); 
 		ShooterIndex = new Counter(1);
