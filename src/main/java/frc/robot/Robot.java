@@ -21,9 +21,9 @@ import com.revrobotics.CANEncoder;
 
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 
-
+import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Counter;
-
+import edu.wpi.first.wpilibj.Solenoid;
 import io.github.pseudoresonance.pixy2api.Pixy2;
 import io.github.pseudoresonance.pixy2api.links.Link;
 import io.github.pseudoresonance.pixy2api.links.SPILink;
@@ -51,7 +51,8 @@ public class Robot extends TimedRobot {
   private CANSparkMax m_leftBMotor;
   private CANSparkMax m_rightFMotor;
   private CANSparkMax m_rightBMotor;
-
+  
+  private Solenoid IntakeSol;
   
   private SpeedControllerGroup lMotorGroup; 
   private SpeedControllerGroup rMotorGroup; 
@@ -63,6 +64,8 @@ public class Robot extends TimedRobot {
   private Counter ShooterIndex;
   private Counter HoodMag;
   private Counter TrenchMag;
+
+  private Compressor MainComp;
 
   private Pixy2 pixy;
 
@@ -102,12 +105,18 @@ public class Robot extends TimedRobot {
     HoodMag.setSemiPeriodMode(true);
     TrenchMag.setSemiPeriodMode(true);
 
+    MainComp = new Compressor();
+    IntakeSol = new Solenoid(1);
+    //IntakeSol = new Solenoid(1);
+    
     dCon = new XboxController(1);
     oCon = new XboxController(2);
     Pixy2 pixy = Pixy2.createInstance(new SPILink());
     pixy.init(); // Initializes the camera and prepares to send/receive data
 		pixy.setLamp((byte) 1, (byte) 1); // Turns the LEDs on
     pixy.setLED(0, 255, 0); // Sets the RGB LED to green
+
+
     
     FireMode = false;
   }
@@ -128,6 +137,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
     SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
     SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
+    SmartDashboard.putBoolean("Compressor on", MainComp.getPressureSwitchValue());
     // The 9.73e-4 is the total period of the PWM output on the am-3749
 		// The value will then be divided by the period to get duty cycle.
 		// This is converted to degrees and Radians
@@ -177,6 +187,17 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     m_myRobot.tankDrive(dCon.getY(Hand.kLeft), dCon.getY(Hand.kRight));
+    
+    if (oCon.getXButtonPressed()) { // Intake In
+      
+    } else {
+      
+    }
+    if (oCon.getAButtonPressed()) { //Intake Down
+      IntakeSol.set(true);
+    } else {
+      IntakeSol.set(false);
+    }
   }
 
   /**
