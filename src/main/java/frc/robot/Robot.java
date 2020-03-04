@@ -53,7 +53,11 @@ public class Robot extends TimedRobot {
   private CANSparkMax m_rightBMotor;
 
   private VictorSPX IntakeMotor;
-  
+  private VictorSPX HopperMotor1;
+  private VictorSPX HopperMotor2;
+  private VictorSPX ShooterMotor1;
+  private VictorSPX ShooterMotor2;
+
   private Solenoid IntakeSol;
   
   private SpeedControllerGroup lMotorGroup; 
@@ -99,6 +103,7 @@ public class Robot extends TimedRobot {
     m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
 
     IntakeMotor = new VictorSPX(0);
+    ShooterMotor1 = new VictorSPX(1);
 
     ShooterMag = new Counter(0); 
 		ShooterIndex = new Counter(1);
@@ -190,7 +195,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    m_myRobot.tankDrive(dCon.getY(Hand.kLeft), dCon.getY(Hand.kRight));
+    m_myRobot.tankDrive(-dCon.getY(Hand.kLeft), -dCon.getY(Hand.kRight));
     
     if (oCon.getXButtonPressed()) { // Intake In
       
