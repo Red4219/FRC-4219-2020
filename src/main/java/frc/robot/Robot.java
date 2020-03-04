@@ -104,6 +104,9 @@ public class Robot extends TimedRobot {
 
     IntakeMotor = new VictorSPX(0);
     ShooterMotor1 = new VictorSPX(1);
+    ShooterMotor2 = new VictorSPX(2);
+    HopperMotor1 = new VictorSPX(3);
+    HopperMotor2 = new VictorSPX(4);
 
     ShooterMag = new Counter(0); 
 		ShooterIndex = new Counter(1);
