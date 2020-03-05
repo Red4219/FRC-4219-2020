@@ -18,7 +18,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.CANEncoder;
-
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 
 import edu.wpi.first.wpilibj.Compressor;
@@ -43,10 +43,10 @@ public class Robot extends TimedRobot {
   private DifferentialDrive m_myRobot;
   private XboxController dCon;
   private XboxController oCon;
-  private static final int leftFDeviceID = 1; 
-  private static final int leftBDeviceID = 2; 
-  private static final int rightFDeviceID = 3;
-  private static final int rightBDeviceID = 4;
+  private static final int leftFDeviceID = 7; 
+  private static final int leftBDeviceID = 8; 
+  private static final int rightFDeviceID = 9;
+  private static final int rightBDeviceID = 10;
   private CANSparkMax m_leftFMotor;
   private CANSparkMax m_leftBMotor;
   private CANSparkMax m_rightFMotor;
@@ -102,11 +102,11 @@ public class Robot extends TimedRobot {
     rMotorGroup = new SpeedControllerGroup(m_rightFMotor,m_rightBMotor);
     m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
 
-    IntakeMotor = new VictorSPX(0);
-    ShooterMotor1 = new VictorSPX(1);
-    ShooterMotor2 = new VictorSPX(2);
-    HopperMotor1 = new VictorSPX(3);
-    HopperMotor2 = new VictorSPX(4);
+    IntakeMotor = new VictorSPX(5);
+    ShooterMotor1 = new VictorSPX(3);
+    ShooterMotor2 = new VictorSPX(6);
+    //HopperMotor1 = new VictorSPX(3);
+    //HopperMotor2 = new VictorSPX(4);
 
     ShooterMag = new Counter(0); 
 		ShooterIndex = new Counter(1);
@@ -117,8 +117,8 @@ public class Robot extends TimedRobot {
     HoodMag.setSemiPeriodMode(true);
     TrenchMag.setSemiPeriodMode(true);
 
-    MainComp = new Compressor();
-    IntakeSol = new Solenoid(1);
+    MainComp = new Compressor(2);
+    IntakeSol = new Solenoid(2,1);
     //IntakeSol = new Solenoid(1);
     
     dCon = new XboxController(1);
@@ -143,12 +143,12 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
-    SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
-    SmartDashboard.putNumber("Shooter Rot", ShooterIndex.get());
-    SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
-    SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
-    SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
+    //SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
+    //SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
+    //SmartDashboard.putNumber("Shooter Rot", ShooterIndex.get());
+    //SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
+    //SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
+    //SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
     SmartDashboard.putBoolean("Compressor on", MainComp.getPressureSwitchValue());
     // The 9.73e-4 is the total period of the PWM output on the am-3749
 		// The value will then be divided by the period to get duty cycle.
@@ -217,5 +217,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void testPeriodic() {
+    ShooterMotor1.set(ControlMode.PercentOutput,1);
+    ShooterMotor2.set(ControlMode.PercentOutput,-1);
   }
 }
