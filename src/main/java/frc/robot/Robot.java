@@ -47,16 +47,17 @@ public class Robot extends TimedRobot {
   private static final int leftBDeviceID = 8; 
   private static final int rightFDeviceID = 9;
   private static final int rightBDeviceID = 10;
+  private static final int hoodMotorID = 11;
   private CANSparkMax m_leftFMotor;
   private CANSparkMax m_leftBMotor;
   private CANSparkMax m_rightFMotor;
   private CANSparkMax m_rightBMotor;
+  private CANSparkMax hoodMotor;
 
   private VictorSPX IntakeMotor;
   private VictorSPX HopperMotor1;
   private VictorSPX HopperMotor2;
-  private VictorSPX ShooterMotor1;
-  private VictorSPX ShooterMotor2;
+  private VictorSPX ShooterMotor;
 
   private Solenoid IntakeSol;
   
@@ -65,6 +66,7 @@ public class Robot extends TimedRobot {
   
   private CANEncoder m_Lencoder;
   private CANEncoder m_Rencoder;
+  private CANEncoder m_Sencoder;
 
   private Counter ShooterMag;
   private Counter ShooterIndex;
@@ -92,6 +94,9 @@ public class Robot extends TimedRobot {
     m_leftBMotor = new CANSparkMax(leftBDeviceID, MotorType.kBrushless);
     m_rightFMotor = new CANSparkMax(rightFDeviceID, MotorType.kBrushless);
     m_rightBMotor = new CANSparkMax(rightBDeviceID, MotorType.kBrushless);
+    hoodMotor = new CANSparkMax(hoodMotorID, MotorType.kBrushless);
+
+    //m_Lencoder.equals(m_leftFMotor);
 
     m_leftFMotor.restoreFactoryDefaults();
     m_leftBMotor.restoreFactoryDefaults();
@@ -103,10 +108,10 @@ public class Robot extends TimedRobot {
     m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
 
     IntakeMotor = new VictorSPX(5);
-    ShooterMotor1 = new VictorSPX(3);
-    ShooterMotor2 = new VictorSPX(6);
-    //HopperMotor1 = new VictorSPX(3);
-    //HopperMotor2 = new VictorSPX(4);
+    ShooterMotor = new VictorSPX(6);
+    
+    HopperMotor1 = new VictorSPX(3);
+    HopperMotor2 = new VictorSPX(4);
 
     ShooterMag = new Counter(0); 
 		ShooterIndex = new Counter(1);
@@ -145,7 +150,7 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     //SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
     //SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
-    //SmartDashboard.putNumber("Shooter Rot", ShooterIndex.get());
+    //SmartDashboard.putNumber("Shooter Rot", m_Sencoder.getPosition());
     //SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
     //SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
     //SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
@@ -212,12 +217,28 @@ public class Robot extends TimedRobot {
     }
   }
 
+  //@Override
+  //public void testInit() {
+    // TODO Auto-generated method stub
+    //super.testInit();
+    //pixy.setLamp((byte) 1, (byte) 1);
+  //}
   /**
    * This function is called periodically during test mode.
    */
   @Override
   public void testPeriodic() {
-    ShooterMotor1.set(ControlMode.PercentOutput,1);
-    ShooterMotor2.set(ControlMode.PercentOutput,-1);
+    if (dCon.getAButtonPressed()) { //Intake Down
+      ShooterMotor.set(ControlMode.PercentOutput,-1);
+      
+    } else if (dCon.getAButtonReleased()) {
+      ShooterMotor.set(ControlMode.PercentOutput,0);
+     // pixy.setLamp((byte) 0, (byte) 0);
+    }
+    
+    HopperMotor1.set(ControlMode.PercentOutput,-dCon.getY(Hand.kRight)/4);
+    HopperMotor2.set(ControlMode.PercentOutput,-dCon.getY(Hand.kRight)/4);
+    IntakeMotor.set(ControlMode.PercentOutput, -dCon.getY(Hand.kRight)/4);
+    hoodMotor.set(dCon.getY(Hand.kLeft)/6); 
   }
 }
