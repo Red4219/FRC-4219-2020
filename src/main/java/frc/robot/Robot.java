@@ -78,13 +78,15 @@ public class Robot extends TimedRobot {
   private Pixy2 pixy;
 
   private boolean FireMode;
+  private int ShooterToggle;
+  private int IntakeToggle;
 
 
   /**
    * This function is run when the robot is first started up and should be
    * used for any initialization code.
    */
-  @Override
+  @Override 
   public void robotInit() {
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
@@ -96,7 +98,9 @@ public class Robot extends TimedRobot {
     m_rightBMotor = new CANSparkMax(rightBDeviceID, MotorType.kBrushless);
     hoodMotor = new CANSparkMax(hoodMotorID, MotorType.kBrushless);
 
-    //m_Lencoder.equals(m_leftFMotor);
+    m_Lencoder = m_leftFMotor.getEncoder();
+    m_Rencoder = m_rightFMotor.getEncoder();
+    m_Sencoder = hoodMotor.getEncoder();
 
     m_leftFMotor.restoreFactoryDefaults();
     m_leftBMotor.restoreFactoryDefaults();
@@ -126,16 +130,18 @@ public class Robot extends TimedRobot {
     IntakeSol = new Solenoid(2,1);
     //IntakeSol = new Solenoid(1);
     
-    dCon = new XboxController(1);
-    oCon = new XboxController(2);
+    dCon = new XboxController(0);
+    oCon = new XboxController(1);
     Pixy2 pixy = Pixy2.createInstance(new SPILink());
     pixy.init(); // Initializes the camera and prepares to send/receive data
 		pixy.setLamp((byte) 1, (byte) 1); // Turns the LEDs on
-    pixy.setLED(0, 255, 0); // Sets the RGB LED to green
+    pixy.setLED(255, 255, 255); // Sets the RGB LED to green
 
 
     
     FireMode = false;
+    ShooterToggle = 2;
+    IntakeToggle = 2;
   }
 
   /**
@@ -148,11 +154,9 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    //SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
-    //SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
-    //SmartDashboard.putNumber("Shooter Rot", m_Sencoder.getPosition());
-    //SmartDashboard.putNumber("Shooter Intermediate", ShooterMag.getPeriod());
-    //SmartDashboard.putNumber("Hood Intermediate", HoodMag.getPeriod());
+    SmartDashboard.putNumber("Right Encoder Position", m_Rencoder.getPosition());
+    SmartDashboard.putNumber("Left Encoder Position", m_Lencoder.getPosition());
+    SmartDashboard.putNumber("Shooter Position", m_Sencoder.getPosition());
     //SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
     SmartDashboard.putBoolean("Compressor on", MainComp.getPressureSwitchValue());
     // The 9.73e-4 is the total period of the PWM output on the am-3749
@@ -203,18 +207,64 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    m_myRobot.tankDrive(-dCon.getY(Hand.kLeft), -dCon.getY(Hand.kRight));
+    m_myRobot.tankDrive(-dCon.getY(Hand.kLeft)/2, -dCon.getY(Hand.kRight)/2);
     
-    if (oCon.getXButtonPressed()) { // Intake In
-      
-    } else {
-      
+    if (oCon.getBumperPressed(Hand.kRight)) { // Intake In
+      IntakeMotor.set(ControlMode.PercentOutput, -0.2);
+    } else if (oCon.getBumperReleased(Hand.kRight)) {
+      IntakeMotor.set(ControlMode.PercentOutput, 0); 
     }
-    if (oCon.getAButtonPressed()) { //Intake Down
-      IntakeSol.set(true);
-    } else {
-      IntakeSol.set(false);
+    if (oCon.getBumperPressed(Hand.kLeft)) { // Intake out
+      IntakeMotor.set(ControlMode.PercentOutput, 0.2);
+    } else if (oCon.getBumperReleased(Hand.kLeft)) {
+      IntakeMotor.set(ControlMode.PercentOutput, 0);
     }
+    //
+    if (oCon.getXButtonPressed()) { // Hopper In
+      HopperMotor1.set(ControlMode.PercentOutput,-0.2);
+      HopperMotor2.set(ControlMode.PercentOutput,-0.2);
+    } else if (oCon.getXButtonPressed()) {
+      HopperMotor1.set(ControlMode.PercentOutput, 0);
+      HopperMotor2.set(ControlMode.PercentOutput, 0);
+    }
+    if (oCon.getYButtonPressed()) { // Hopper out
+      HopperMotor1.set(ControlMode.PercentOutput,0.2);
+      HopperMotor2.set(ControlMode.PercentOutput,0.2);
+    } else if (oCon.getYButtonPressed()) {
+      HopperMotor1.set(ControlMode.PercentOutput,0);
+      HopperMotor2.set(ControlMode.PercentOutput,0);
+    }
+    //
+    if (m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) < -20 && m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) > 100) {
+      hoodMotor.set(dCon.getY(Hand.kLeft)/6); 
+    }  
+    //
+    if (oCon.getAButtonPressed() && ShooterToggle < 2) { // Shooter toggle
+      if (ShooterToggle == 0) {
+        ShooterToggle = 3;
+      } else if (ShooterToggle == 1) {
+        ShooterToggle = 2;
+      }
+    } else if (oCon.getAButtonReleased() && ShooterToggle > 1) {
+      ShooterToggle = ShooterToggle - 2; 
+      ShooterMotor.set(ControlMode.PercentOutput,ShooterToggle); 
+    }
+    //
+    if (oCon.getBButtonPressed() && IntakeToggle < 2) { // Intake toggle
+      if (IntakeToggle == 0) {
+        IntakeToggle = 3;
+      } else if (IntakeToggle == 1) {
+        IntakeToggle = 2;
+      }
+    } else if (oCon.getBButtonReleased() && IntakeToggle > 1) {
+      IntakeToggle = IntakeToggle - 2; 
+      if (IntakeToggle == 1) {
+        IntakeSol.set(true);
+      } else if (IntakeToggle == 0) {
+        IntakeSol.set(false);
+      }
+    }
+    //
   }
 
   //@Override
