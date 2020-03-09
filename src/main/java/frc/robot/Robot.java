@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.GenericHID.Hand;
 import edu.wpi.first.wpilibj.SpeedControllerGroup;
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -21,6 +22,7 @@ import com.revrobotics.CANEncoder;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 
+import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Counter;
 import edu.wpi.first.wpilibj.Solenoid;
@@ -43,10 +45,10 @@ public class Robot extends TimedRobot {
   private DifferentialDrive m_myRobot;
   private XboxController dCon;
   private XboxController oCon;
-  private static final int leftFDeviceID = 7; 
-  private static final int leftBDeviceID = 8; 
-  private static final int rightFDeviceID = 9;
-  private static final int rightBDeviceID = 10;
+  private static final int leftFDeviceID = 9; 
+  private static final int leftBDeviceID = 7; 
+  private static final int rightFDeviceID = 10;
+  private static final int rightBDeviceID = 8;
   private static final int hoodMotorID = 11;
   private CANSparkMax m_leftFMotor;
   private CANSparkMax m_leftBMotor;
@@ -81,6 +83,12 @@ public class Robot extends TimedRobot {
   private int ShooterToggle;
   private int IntakeToggle;
 
+  private double ShooterRevTarget = 0;
+  private double ShooterRevCurrent = 0;
+  private double AutonEncodeStart = 0;
+
+  private double StoredTime = System.currentTimeMillis();
+
 
   /**
    * This function is run when the robot is first started up and should be
@@ -88,6 +96,7 @@ public class Robot extends TimedRobot {
    */
   @Override 
   public void robotInit() {
+    
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
@@ -137,8 +146,9 @@ public class Robot extends TimedRobot {
 		pixy.setLamp((byte) 1, (byte) 1); // Turns the LEDs on
     pixy.setLED(255, 255, 255); // Sets the RGB LED to green
 
+    CameraServer.getInstance().startAutomaticCapture();
+    CameraServer.getInstance().startAutomaticCapture();
 
-    
     FireMode = false;
     ShooterToggle = 2;
     IntakeToggle = 2;
@@ -159,6 +169,21 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Shooter Position", m_Sencoder.getPosition());
     //SmartDashboard.putNumber("Trench Intermediate", TrenchMag.getPeriod());
     SmartDashboard.putBoolean("Compressor on", MainComp.getPressureSwitchValue());
+    if (ShooterToggle == 1) {
+      SmartDashboard.putString("Shooter State", "ENABLED");
+    } else if (ShooterToggle == 0) {
+      SmartDashboard.putString("Shooter State", "DISABLED");
+    } else {
+      SmartDashboard.putString("Shooter State", "???");
+    }
+    if (IntakeToggle == 1) {
+      SmartDashboard.putString("Intake Status", "DOWN");
+    } else if (IntakeToggle == 0) {
+      SmartDashboard.putString("Intake Status", "UP");
+    } else {
+      SmartDashboard.putString("Intake Status", "???");
+    }
+    SmartDashboard.putNumber("Shooter Speed", ShooterRevCurrent);
     // The 9.73e-4 is the total period of the PWM output on the am-3749
 		// The value will then be divided by the period to get duty cycle.
 		// This is converted to degrees and Radians
@@ -184,6 +209,8 @@ public class Robot extends TimedRobot {
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+    AutonEncodeStart = m_Rencoder.getPosition(); 
+    StoredTime = System.currentTimeMillis();
   }
 
   /**
@@ -193,11 +220,50 @@ public class Robot extends TimedRobot {
   public void autonomousPeriodic() {
     switch (m_autoSelected) {
       case kCustomAuto:
-        // Put custom auto code here
-        break;
+      
+      if (System.currentTimeMillis() - StoredTime < 3000) {
+        ShooterMotor.set(ControlMode.PercentOutput, -1); 
+        if (m_Rencoder.getPosition() - AutonEncodeStart > -20) {
+          rMotorGroup.set(-.2);
+          lMotorGroup.set(.2);
+        } else { 
+          rMotorGroup.set(0);
+          lMotorGroup.set(0);
+        }
+      } else if (System.currentTimeMillis() - StoredTime < 7000) {
+        HopperMotor1.set(ControlMode.PercentOutput,-0.15);
+        HopperMotor2.set(ControlMode.PercentOutput,-0.15);
+        rMotorGroup.set(0);
+        lMotorGroup.set(0); 
+        AutonEncodeStart = 0;
+      } else if (System.currentTimeMillis() - StoredTime < 10000) {
+        HopperMotor1.set(ControlMode.PercentOutput,0);
+        HopperMotor2.set(ControlMode.PercentOutput,0);
+        ShooterMotor.set(ControlMode.PercentOutput,0);  
+        if (m_Rencoder.getPosition() - AutonEncodeStart < 36) {
+          rMotorGroup.set(.4);
+          lMotorGroup.set(-.4);
+        } else { 
+          rMotorGroup.set(0);
+          lMotorGroup.set(0);
+        }
+      } else if (System.currentTimeMillis() - StoredTime < 15000) {
+        rMotorGroup.set(0);
+        lMotorGroup.set(0);
+      }
+     
+
+      
+      break;
       case kDefaultAuto:
       default:
-        // Put default auto code here
+      if (m_Rencoder.getPosition() - AutonEncodeStart > -40) {
+        rMotorGroup.set(-.4);
+        lMotorGroup.set(.4);
+      } else {
+        rMotorGroup.set(0);
+        lMotorGroup.set(0);
+      }
         break;
     }
   }
@@ -207,7 +273,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void teleopPeriodic() {
-    m_myRobot.tankDrive(-dCon.getY(Hand.kLeft)/2, -dCon.getY(Hand.kRight)/2);
+    m_myRobot.tankDrive(-dCon.getY(Hand.kLeft), -dCon.getY(Hand.kRight));
     
     if (oCon.getBumperPressed(Hand.kRight)) { // Intake In
       IntakeMotor.set(ControlMode.PercentOutput, -0.2);
@@ -223,21 +289,21 @@ public class Robot extends TimedRobot {
     if (oCon.getXButtonPressed()) { // Hopper In
       HopperMotor1.set(ControlMode.PercentOutput,-0.2);
       HopperMotor2.set(ControlMode.PercentOutput,-0.2);
-    } else if (oCon.getXButtonPressed()) {
+    } else if (oCon.getXButtonReleased()) {
       HopperMotor1.set(ControlMode.PercentOutput, 0);
       HopperMotor2.set(ControlMode.PercentOutput, 0);
     }
     if (oCon.getYButtonPressed()) { // Hopper out
       HopperMotor1.set(ControlMode.PercentOutput,0.2);
       HopperMotor2.set(ControlMode.PercentOutput,0.2);
-    } else if (oCon.getYButtonPressed()) {
+    } else if (oCon.getYButtonReleased()) {
       HopperMotor1.set(ControlMode.PercentOutput,0);
       HopperMotor2.set(ControlMode.PercentOutput,0);
     }
     //
-    if (m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) < -20 && m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) > 100) {
-      hoodMotor.set(dCon.getY(Hand.kLeft)/6); 
-    }  
+    //if (m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) < -20 && m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) > 100) {
+      //hoodMotor.set(dCon.getY(Hand.kLeft)/2); 
+    //}  
     //
     if (oCon.getAButtonPressed() && ShooterToggle < 2) { // Shooter toggle
       if (ShooterToggle == 0) {
@@ -247,7 +313,15 @@ public class Robot extends TimedRobot {
       }
     } else if (oCon.getAButtonReleased() && ShooterToggle > 1) {
       ShooterToggle = ShooterToggle - 2; 
-      ShooterMotor.set(ControlMode.PercentOutput,ShooterToggle); 
+
+      ShooterRevTarget = -ShooterToggle;
+    }
+    if (ShooterRevCurrent > ShooterRevTarget) {
+      ShooterRevCurrent = ShooterRevCurrent - 0.02;
+      ShooterMotor.set(ControlMode.PercentOutput, ShooterRevCurrent); 
+    } else if (ShooterRevCurrent < ShooterRevTarget) {
+      ShooterRevCurrent = ShooterRevCurrent + 0.02;
+      ShooterMotor.set(ControlMode.PercentOutput, ShooterRevCurrent); 
     }
     //
     if (oCon.getBButtonPressed() && IntakeToggle < 2) { // Intake toggle
