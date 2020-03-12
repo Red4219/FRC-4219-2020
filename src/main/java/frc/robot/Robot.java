@@ -19,14 +19,21 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import com.revrobotics.CANEncoder;
+
+import java.util.ArrayList;
+
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.VictorSPX;
 
 import edu.wpi.first.cameraserver.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.Counter;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.Spark;
 import io.github.pseudoresonance.pixy2api.Pixy2;
+import io.github.pseudoresonance.pixy2api.Pixy2CCC;
+import io.github.pseudoresonance.pixy2api.Pixy2CCC.Block;
 import io.github.pseudoresonance.pixy2api.links.Link;
 import io.github.pseudoresonance.pixy2api.links.SPILink;
 /**
@@ -50,11 +57,18 @@ public class Robot extends TimedRobot {
   private static final int rightFDeviceID = 10;
   private static final int rightBDeviceID = 8;
   private static final int hoodMotorID = 11;
+  private static final int liftMotorID = 12;
   private CANSparkMax m_leftFMotor;
   private CANSparkMax m_leftBMotor;
   private CANSparkMax m_rightFMotor;
   private CANSparkMax m_rightBMotor;
   private CANSparkMax hoodMotor;
+  private CANSparkMax LiftMotor;
+
+  private Spark LED1;
+  private Spark LED2;
+
+  private DriverStation ds;
 
   private VictorSPX IntakeMotor;
   private VictorSPX HopperMotor1;
@@ -77,7 +91,7 @@ public class Robot extends TimedRobot {
 
   private Compressor MainComp;
 
-  private Pixy2 pixy;
+  private static Pixy2 pixy;
 
   private boolean FireMode;
   private int ShooterToggle;
@@ -86,17 +100,17 @@ public class Robot extends TimedRobot {
   private double ShooterRevTarget = 0;
   private double ShooterRevCurrent = 0;
   private double AutonEncodeStart = 0;
+  private double HoodEncodeStart = 0;
 
   private double StoredTime = System.currentTimeMillis();
 
-
   /**
-   * This function is run when the robot is first started up and should be
-   * used for any initialization code.
+   * This function is run when the robot is first started up and should be used
+   * for any initialization code.
    */
-  @Override 
+  @Override
   public void robotInit() {
-    
+
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
@@ -106,6 +120,10 @@ public class Robot extends TimedRobot {
     m_rightFMotor = new CANSparkMax(rightFDeviceID, MotorType.kBrushless);
     m_rightBMotor = new CANSparkMax(rightBDeviceID, MotorType.kBrushless);
     hoodMotor = new CANSparkMax(hoodMotorID, MotorType.kBrushless);
+    LiftMotor = new CANSparkMax(liftMotorID, MotorType.kBrushless);
+
+    LED1 = new Spark(1);
+    //LED2 = new Spark(2);
 
     m_Lencoder = m_leftFMotor.getEncoder();
     m_Rencoder = m_rightFMotor.getEncoder();
@@ -116,44 +134,70 @@ public class Robot extends TimedRobot {
     m_rightFMotor.restoreFactoryDefaults();
     m_rightBMotor.restoreFactoryDefaults();
 
-    lMotorGroup = new SpeedControllerGroup(m_leftFMotor,m_leftBMotor);
-    rMotorGroup = new SpeedControllerGroup(m_rightFMotor,m_rightBMotor);
-    m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup); 
+    lMotorGroup = new SpeedControllerGroup(m_leftFMotor, m_leftBMotor);
+    rMotorGroup = new SpeedControllerGroup(m_rightFMotor, m_rightBMotor);
+    m_myRobot = new DifferentialDrive(lMotorGroup, rMotorGroup);
 
     IntakeMotor = new VictorSPX(5);
     ShooterMotor = new VictorSPX(6);
-    
+
     HopperMotor1 = new VictorSPX(3);
     HopperMotor2 = new VictorSPX(4);
 
-    ShooterMag = new Counter(0); 
-		ShooterIndex = new Counter(1);
-    HoodMag = new Counter(2); 
+    ShooterMag = new Counter(0);
+    ShooterIndex = new Counter(1);
+    HoodMag = new Counter(2);
     TrenchMag = new Counter(3);
-    //Set Semi-Period Mode in order to Measure the Pulse Width
+    // Set Semi-Period Mode in order to Measure the Pulse Width
     ShooterMag.setSemiPeriodMode(true);
     HoodMag.setSemiPeriodMode(true);
     TrenchMag.setSemiPeriodMode(true);
 
     MainComp = new Compressor(2);
-    IntakeSol = new Solenoid(2,1);
-    //IntakeSol = new Solenoid(1);
-    
+    IntakeSol = new Solenoid(2, 1);
+    // IntakeSol = new Solenoid(1);
+
+    ds = DriverStation.getInstance();
     dCon = new XboxController(0);
     oCon = new XboxController(1);
-    Pixy2 pixy = Pixy2.createInstance(new SPILink());
+    pixy = Pixy2.createInstance(new SPILink());
     pixy.init(); // Initializes the camera and prepares to send/receive data
-		pixy.setLamp((byte) 1, (byte) 1); // Turns the LEDs on
+    pixy.setLamp((byte) 0, (byte) 0); // Turns the LEDs on
     pixy.setLED(255, 255, 255); // Sets the RGB LED to green
 
     CameraServer.getInstance().startAutomaticCapture();
-    CameraServer.getInstance().startAutomaticCapture();
+    //CameraServer.getInstance().startAutomaticCapture();
 
     FireMode = false;
     ShooterToggle = 2;
     IntakeToggle = 2;
+    //
+    LED1.set(0.93);
+    //LED2.set(0.93);
   }
 
+  public static Block getBiggestBlock() {
+    // Gets the number of "blocks", identified targets, that match signature 1 on
+    // the Pixy2,
+    // does not wait for new data if none is available,
+    // and limits the number of returned blocks to 25, for a slight increase in
+    // efficiency
+    int blockCount = pixy.getCCC().getBlocks(false, Pixy2CCC.CCC_SIG1, 25);
+		System.out.println("Found " + blockCount + " blocks!"); // Reports number of blocks found
+		if (blockCount <= 0) {
+			return null; // If blocks were not found, stop processing
+		}
+		ArrayList<Block> blocks = pixy.getCCC().getBlocks(); // Gets a list of all blocks found by the Pixy2
+		Block largestBlock = null;
+		for (Block block : blocks) { // Loops through all blocks and finds the widest one
+			if (largestBlock == null) {
+				largestBlock = block;
+			} else if (block.getWidth() > largestBlock.getWidth()) {
+				largestBlock = block;
+			}
+		}
+		return largestBlock;
+	}
   /**
    * This function is called every robot packet, no matter the mode. Use
    * this for items like diagnostics that you want ran during disabled,
@@ -183,7 +227,19 @@ public class Robot extends TimedRobot {
     } else {
       SmartDashboard.putString("Intake Status", "???");
     }
+    LED1.set(0.93);
     SmartDashboard.putNumber("Shooter Speed", ShooterRevCurrent);
+    var Team = ds.getAlliance();
+    if (Team != null) {
+      if (Team == DriverStation.Alliance.Red) { 
+        LED1.set(0.61);
+      } else if (Team == DriverStation.Alliance.Blue) {
+        LED1.set(0.87);
+      } else {
+        LED1.set(0.93);
+      }
+    }
+    // WPI lib is broken as usual
     // The 9.73e-4 is the total period of the PWM output on the am-3749
 		// The value will then be divided by the period to get duty cycle.
 		// This is converted to degrees and Radians
@@ -302,14 +358,16 @@ public class Robot extends TimedRobot {
     }
     //
     //if (m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) < -20 && m_Sencoder.getPosition() + (oCon.getY(Hand.kRight)/6) > 100) {
-      //hoodMotor.set(dCon.getY(Hand.kLeft)/2); 
+      hoodMotor.set(oCon.getY(Hand.kLeft)/5); 
     //}  
     //
     if (oCon.getAButtonPressed() && ShooterToggle < 2) { // Shooter toggle
       if (ShooterToggle == 0) {
         ShooterToggle = 3;
+        pixy.setLamp((byte) 1, (byte) 1);
       } else if (ShooterToggle == 1) {
         ShooterToggle = 2;
+        pixy.setLamp((byte) 0, (byte) 0);
       }
     } else if (oCon.getAButtonReleased() && ShooterToggle > 1) {
       ShooterToggle = ShooterToggle - 2; 
@@ -341,28 +399,38 @@ public class Robot extends TimedRobot {
     //
   }
 
-  //@Override
-  //public void testInit() {
+  @Override
+  public void testInit() {
     // TODO Auto-generated method stub
     //super.testInit();
-    //pixy.setLamp((byte) 1, (byte) 1);
-  //}
+    HoodEncodeStart = m_Sencoder.getPosition();
+  }
   /**
    * This function is called periodically during test mode.
    */
   @Override
   public void testPeriodic() {
-    if (dCon.getAButtonPressed()) { //Intake Down
-      ShooterMotor.set(ControlMode.PercentOutput,-1);
-      
-    } else if (dCon.getAButtonReleased()) {
-      ShooterMotor.set(ControlMode.PercentOutput,0);
-     // pixy.setLamp((byte) 0, (byte) 0);
+   /* pixy.setLamp((byte) 1, (byte) 1);
+    Block block = getBiggestBlock();
+    if (block != null) {
+      int BlkY = block.getY();  
+      int BlkX = block.getX();
+      int CamH = pixy.getFrameHeight();
+      int CamW = pixy.getFrameWidth();
+      double HSet = ((1/(CamH/2)) + 0.05)*((CamH/2) - BlkY);
+      if (HSet < 0 && m_Sencoder.getPosition() > HoodEncodeStart) { 
+        hoodMotor.set(-.05);
+      } else if (HSet > 0 && m_Sencoder.getPosition() < HoodEncodeStart + 20) {
+        hoodMotor.set(.05);
+      } else {
+        hoodMotor.set(0);
+      }
     }
     
-    HopperMotor1.set(ControlMode.PercentOutput,-dCon.getY(Hand.kRight)/4);
-    HopperMotor2.set(ControlMode.PercentOutput,-dCon.getY(Hand.kRight)/4);
-    IntakeMotor.set(ControlMode.PercentOutput, -dCon.getY(Hand.kRight)/4);
-    hoodMotor.set(dCon.getY(Hand.kLeft)/6); 
+    System.out.println(m_Sencoder.getPosition());
+    */
+     //LED1.set(0.93);
+    LiftMotor.set(dCon.getY(Hand.kLeft));
+
   }
 }
